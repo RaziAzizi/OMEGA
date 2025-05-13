@@ -95,11 +95,22 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 #ifdef PYTHON
 	const uint d_Nx, const uint d_Ny, const uint d_Nz, const float bx, const float by, const float bz, 
     const float d_bmaxx, const float d_bmaxy, const float d_bmaxz, const float d_scalex, const float d_scaley, const float d_scalez,
+#ifdef SMR
+    const float bx_c, const float by_c, const float bz_c, 
+    const float d_bmaxx_c, const float d_bmaxy_c, const float d_bmaxz_c, const float d_scalex_c,const float d_scaley_c, const float d_scalez_c,
+#endif
 #else
-	const uint3 d_N, const float3 b, const float3 bmax, const float3 d_scale, 
+	const uint3 d_N, const float3 b, const float3 bmax, const float3 d_scale,
+#ifdef SMR
+    const float3 b_c, const float3 bmax_c, const float3 d_scale_c, 
+#endif
 #endif
 #ifdef FP
+#ifdef SMR
+    IMAGE3D d_OSEM_c,
+#endif
     IMAGE3D d_OSEM, CLGLOBAL float* CLRESTRICT d_output,
+
 #else
     const CLGLOBAL float* CLRESTRICT d_OSEM, CLGLOBAL CAST* CLRESTRICT d_output,
 #endif
@@ -204,6 +215,12 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 	const float3 d_scale = make_float3(d_scalex, d_scaley, d_scalez);
 	const float3 b = make_float3(bx, by, bz);
 	const float3 bmax = make_float3(d_bmaxx, d_bmaxy, d_bmaxz);
+#ifdef SMR
+	const float3 d_scale_c = make_float3(d_scalex_c, d_scaley_c, d_scalez_c);
+	const float3 b_c = make_float3(bx_c, by_c, bz_c);
+	const float3 bmax_c = make_float3(d_bmaxx_c, d_bmaxy_c, d_bmaxz_c);
+
+#endif
 #endif
 #if defined(LISTMODE) && defined(TOF)
 	const int TOFid = TOFIndex[idx];
@@ -266,6 +283,9 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 			lor++;
 #endif  //////////////// END MULTIRAY ////////////////
 	float3 s, d;
+#ifdef SMR
+    float3 s_c, d_c,v_c;
+#endif
 #if (defined(CT) || defined(SPECT)) && !defined(LISTMODE) && !defined(PET) // CT data
 	getDetectorCoordinatesCT(d_xyz, d_uv, &s, &d, i, d_size_x, d_sizey, d_dPitch);
 #elif defined(LISTMODE) && !defined(SENS) // Listmode data
@@ -313,16 +333,69 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 
     const float tStart = fmax(fmax(tMin.x, tMin.y), tMin.z);
     const float tEnd = fmin(fmin(tMax.x, tMax.y), tMax.z);
+    float L = length(v);
+    const float tStep = DIVIDE(dL, L);
 #ifdef TOF //////////////// TOF ////////////////
     float TOFSum = 0.f;
 #endif //////////////// END TOF ////////////////
+	///// COMMENT /////
+	// I added your modifications to the point where I believe they should be
+	///// END COMMENT /////
+   float temp=0.f;
+#ifdef SMR
+  
+       const float3 bmin_c = b_c;
+       const float3 tBack_c = (bmin_c - s) / v;
+       const float3 tFront_c = (bmax_c - s) / v;
+
+       const float3 tMin_c = fmin(tFront_c, tBack_c);
+       const float3 tMax_c = fmax(tFront_c, tBack_c);
+
+       const float tStart_c = fmax(fmax(tMin_c.x, tMin_c.y), tMin_c.z);
+       const float tEnd_c = fmin(fmin(tMax_c.x, tMax_c.y), tMax_c.z);
+    
+       if ( (tStart_c >= tEnd_c))
+    return;
+
+     // shift and scale
+        s_c = (s - bmin_c) * d_scale_c;
+        v_c = v*d_scale_c;
+
+
+        s = (s - bmin) * d_scale;
+        v *= d_scale;
+
+       float t = tStart_c;
+       for (uint ii = 0; ii < NSTEPS; ii++) {
+    
+     if (t>tEnd_c)
+             break;
+    
+      if (t >= tStart && t<= tEnd && tStart < tEnd){
+          const float3 p = v * t + s;
+          float apu = 0.f;
+          forwardProject(dL, &apu, p, d_OSEM);
+          ax[0] += apu;
+          t += tStep;
+   
+   }else{
+
+       const float3 p = v_c * t + s_c;
+       float apu = 0.f;
+       forwardProject(dL, &apu, p, d_OSEM_c);
+       ax[0] += apu;
+       t += tStep;
+     }
+  }  
+   //d_output[idx] += ax[0];
+#else
     if (tStart >= tEnd)
 #ifdef N_RAYS //////////////// MULTIRAY ////////////////
 		continue;
 #else
 		return;
 #endif  //////////////// END MULTIRAY ////////////////
-	float L = length(v);
+	
 #ifndef CT
 #if !defined(TOTLENGTH)
 	float LL = 0.f;
@@ -336,11 +409,10 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 	TOFDis(v, tStart, L, &D, &DD);
 #endif //////////////// END TOF ////////////////
 #endif
-    const float tStep = DIVIDE(dL, L);
+
 
     s = (s - bmin) * d_scale;
     v *= d_scale;
-    float temp = 0.f;
 
     float t = tStart;
 #if (defined(ATN) && defined(BP)) || (defined(BP) && !defined(TOTLENGTH) && !defined(CT))
@@ -471,6 +543,10 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
         if (t > tEnd)
             break;
     }
+	///// COMMENT /////
+	// This is the #endif that corresponds to your #ifdef SMR
+	///// END COMMENT /////
+#endif
 #if !defined(TOTLENGTH) && !defined(CT) && defined(FP)
         if (LL == 0.f)
             LL = L;
@@ -610,8 +686,16 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
 #ifdef PYTHON
 	const uint d_Nx, const uint d_Ny, const uint d_Nz, const float bx, const float by, const float bz, 
     const float d_dx, const float d_dy, const float d_dz,
+    
+#ifdef SMR	
+    const uint d_Nx_d, const uint d_Ny_d, const uint d_Nz_d, const float bx_d, const float by_d, const float bz_d, 
+    const float d_dx_d, const float d_dy_d, const float d_dz_d,
+#endif
 #else
 	const uint3 d_N, const float3 b, const float3 d_d, 
+#ifdef SMR	
+    const uint3 d_N_d, const float3 b_d, const float3 d_d_d, 
+#endif
 #endif
     const float kerroin, 
 #ifdef USEIMAGES
@@ -649,6 +733,9 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
 
 #ifdef PYTHON
 	const uint3 d_N = make_uint3(d_Nx, d_Ny, d_Nz);
+#ifdef SMR 
+    const uint3 d_N_d = make_uint3(d_Nx_d, d_Ny_d, d_Nz_d);
+#endif
 #endif
     if (i.x >= d_N.x || i.y >= d_N.y || i.z >= d_N.z)
         return;
@@ -684,7 +771,15 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
 	const float2 d_dPitch = make_float2(d_dPitchX, d_dPitchY);
 	const float3 d_d = make_float3(d_dx, d_dy, d_dz);
 	const float3 b = make_float3(bx, by, bz);
+#ifdef SMR 
+    const float3 d_d_d = make_float3(d_dx_d, d_dy_d, d_dz_d);
+	const float3 b_d = make_float3(bx_d, by_d, bz_d);
+#endif	
 #endif
+     // create bmax for dense area
+#ifdef SMR 	 
+     const float3 bmax_d=convert_float3(d_N_d)*d_d_d+b_d;
+#endif	 
     float temp[NVOXELS];
     float wSum[NVOXELS];
     for (int zz = 0; zz < NVOXELS; zz++) {
@@ -698,6 +793,7 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
     for (int kk = 0; kk < d_nProjections; kk++) {
         float3 d1, d2, d3;
         float3 s;
+        float3 dV_=dV;
         s = CMFLOAT3(d_xyz[kk * 6], d_xyz[kk * 6 + 1], d_xyz[kk * 6 + 2]);
         d1 = CMFLOAT3(d_xyz[kk * 6 + 3], d_xyz[kk * 6 + 4], d_xyz[kk * 6 + 5]);
 #if defined(PITCH)
@@ -729,6 +825,12 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
             const uint ind = i.z + zz;
             if (ind >= d_N.z)
                 break;
+#ifdef SMR                
+            if(ii==1){
+                    if((dV_.x >=b_d.x && dV_.y >=b_d.y && dV_.z >=b_d.z) && (dV_.x <=bmax_d.x && dV_.y <=bmax_d.y && dV_.z <=bmax_d.z ))
+                       goto next;
+            } 
+#endif
             const float t = DIVIDE(upperPart, lowerPart);
 #ifndef USEMAD
             float3 p = s + v * t;
@@ -795,8 +897,13 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
                 }
 #endif
             }
+ #ifdef SMR           
+            next:
+            dV_.z+=d_d.z;
+ #endif            
             v.z += d_d.z;
             lowerPart -= dApu;
+            
         }
     }
     for (int zz = 0; zz < NVOXELS; zz++) {

@@ -1,4 +1,4 @@
-/*************************************************************************************************************************************************
+/***********************************************nMultiVolumes_s**************************************************************************************************
 * Matrix free computations for OMEGA.
 * This is the main reconstruction file for ArrayFire reconstruction. Can utilize OpenCL, CUDA or OneAPI (in the future) as the backend. All the 
 * main operations are performed in this file.
@@ -455,6 +455,10 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 #endif
 
 	initializeProxPriors(MethodList, inputScalars, vec);
+	if(inputScalars.multiResolution==2)
+	    inputScalars.nMultiVolumes_s=0;
+		else
+		inputScalars.nMultiVolumes_s=inputScalars.nMultiVolumes;
 
 	if (inputScalars.verbose >= 3 || DEBUG)
 		mexPrint("Constant kernel variables set");
@@ -477,7 +481,7 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 					E = af::constant(0.f, inputScalars.nRowsD, inputScalars.nColsD, inputScalars.nProjections);
 				else
 					E = af::constant(0.f, inputScalars.koko);
-				for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
+				for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
 					if (inputScalars.use_psf)
 						vec.im_os_blurred[ii] = af::constant(1.f, inputScalars.im_dim[ii]);
 					else
@@ -724,7 +728,7 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 			}
 			// Compute the measurement sensitivity image for each subset
 			if (w_vec.computeM) {
-				if (inputScalars.verbose >= 3)
+				if (DEBUG || inputScalars.verbose >= 3)
 					mexPrint("Starting computation of measurement sensitivity image (M)");
 				int64_t uu = 0;
 				for (uint32_t ll = 0; ll < inputScalars.subsetsUsed; ll++) {
@@ -732,13 +736,23 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 					if ((inputScalars.CT || inputScalars.SPECT || inputScalars.PET) && inputScalars.listmode == 0)
 						m_size = static_cast<uint64_t>(inputScalars.nRowsD) * static_cast<uint64_t>(inputScalars.nColsD) * length[ll];
 					w_vec.M.push_back(af::constant(0.f, m_size * nBins, 1));
-					for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
-						af::array oneInput;
+                    for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
 						if (inputScalars.use_psf) {
 							vec.im_os_blurred[ii] = af::constant(1.f, inputScalars.im_dim[ii]);
 						}
 						else
 							vec.im_os[ii] = af::constant(1.f, inputScalars.im_dim[ii]);
+						if (DEBUG) {
+							mexPrintBase("vec.im_os[ii = %f\n", af::sum<float>(vec.im_os[ii]));
+							mexPrintBase("max(vec.im_os[ii) = %f\n", af::max<float>(vec.im_os[ii]));
+							mexPrintBase("min(vec.im_os[ii) = %f\n", af::min<float>(vec.im_os[ii]));
+							mexPrintBase("ii = %d\n", ii);
+							mexPrintBase("inputScalars.im_dim[ii] = %d\n", inputScalars.im_dim[ii]);
+							mexEval();
+						}
+					}
+					for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
+						af::array oneInput;
 						if (inputScalars.projector_type == 6) {
 							oneInput = af::constant(1.f, inputScalars.nRowsD, inputScalars.nColsD, length[ll]);
 							forwardProjectionType6(oneInput, w_vec, vec, inputScalars, length[ll], uu, proj, ii, atten);
@@ -1054,7 +1068,7 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 							outputFP = af::constant(0.f, m_size * inputScalars.nBins);
 						else
 							outputFP = af::constant(0.f, m_size);
-						for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
+						for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
 							status = forwardProjectionAFOpenCL(vec, inputScalars, w_vec, outputFP, osa_iter, length, g, m_size, proj, ii, pituus);
 							if (status != 0) {
 								return -1;
@@ -1227,7 +1241,7 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 						mexPrintBase("uu = %d\n", uu);
 						mexEval();
 					}
-					for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++)
+					for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++)
 						forwardProjectionType6(fProj, w_vec, vec, inputScalars, length[osa_iter], uu, proj, ii, atten);
 					fProj.eval();
 					fProj = af::flat(fProj);

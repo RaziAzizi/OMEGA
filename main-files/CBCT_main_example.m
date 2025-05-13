@@ -137,7 +137,7 @@ options.offangle = (3*pi)/2;
 options.useExtrapolation = false;
 
 %%% Use extended FOV
-options.useEFOV = false;
+options.useEFOV = true;
 
 % Use transaxial extended FOV (this is off by default)
 options.transaxialEFOV = true;
@@ -155,7 +155,9 @@ options.axialExtrapolation = true;
 
 % Setting this to true uses multi-resolution reconstruction when using
 % extended FOV. Only applies to extended FOV!
-options.useMultiResolutionVolumes = true;
+options.useMultiResolutionVolumes = 1;
+
+options.eFOVLength = 0.4;
 
 % This is the scale value for the multi-resolution volumes. The original
 % voxel size is divided by this value and then used as the voxel size for
@@ -326,6 +328,8 @@ options.LSQR = false;
 
 %%% Conjugate Gradient Least-squares (CGLS)
 options.CGLS = false;
+
+options.SART = false;
 
 %%% Feldkamp-Davis-Kress (FDK)
 options.FDK = false;
@@ -528,7 +532,7 @@ options.GGMRF_c = 5;
 
 % Store the intermediate forward projections. Unlike image estimates, this
 % also stores subiteration results.
-options.storeFP = false;
+options.storeFP = true;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -568,6 +572,11 @@ t = tic;
 t = toc(t)
 
 % Convert to HU-values
+if iscell(pz)
+    z = int16(pz{1}(:,:,:,end) * 55000) - 1000;
+else
 z = int16(pz(:,:,:,end) * 55000) - 1000;
+end
 
-volume3Dviewer(z, [-1000 2000], [0 0 1])
+volume3Dviewer(z, [-1000 2000], [0 1 0])
+% volume3Dviewer(pz{2}, [], [0 1 0])

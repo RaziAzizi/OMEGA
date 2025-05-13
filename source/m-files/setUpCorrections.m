@@ -33,7 +33,37 @@ if options.useEFOV
     options.NxFull = nx;
     options.NyFull = ny;
     options.NzFull = nz;
-    if options.useMultiResolutionVolumes
+
+
+if options.useMultiResolutionVolumes==2
+        if ~isfield(options, 'multiResolutionScale')
+            warning('No scale value input for multi-resolution reconstruction. Using default value of 1/4 of the original voxel size.')
+            options.multiResolutionScale = .25;
+        end
+       if options.axialEFOV && options.transaxialEFOV
+            options.nMultiVolumes = 1;
+            options.Nx = uint32([options.NxOrig, options.Nx * options.multiResolutionScale]);
+            options.Ny = uint32([options.NyOrig, options.Ny * options.multiResolutionScale]);
+            options.Nz = uint32([options.NzOrig, options.Nz * options.multiResolutionScale]);
+            options.FOVa_x =([options.FOVxOrig,options.FOVa_x ]);
+            options.FOVa_y =([options.FOVyOrig,options.FOVa_y ]);
+            options.axial_fov =([options.axialFOVOrig,options.axial_fov ]);
+
+             if exist('imresize3','file') == 2
+                    apu = single(imresize3(options.x0,options.multiResolutionScale));
+             else
+                    apu = single(imresize(options.x0,options.multiResolutionScale));
+                    [XX, YY, ZZ] = meshgrid(1:size(apu,1), 1:size(apu,1), 1:round(1/options.multiResolutionScale):size(options.x0,3));
+                    apu = interp3(apu, XX, YY, ZZ);
+             end
+
+              options.x1=apu;
+              options.x0 = [options.x0(:);options.x1(:)];
+              options = rmfield(options, {'x1'});
+       end
+
+
+elseif options.useMultiResolutionVolumes==1
         if ~isfield(options, 'multiResolutionScale')
             warning('No scale value input for multi-resolution reconstruction. Using default value of 1/4 of the original voxel size.')
             options.multiResolutionScale = .25;

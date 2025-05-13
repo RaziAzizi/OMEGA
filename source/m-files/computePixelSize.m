@@ -1,7 +1,9 @@
-function [xx,yy,zz,dx,dy,dz,bx,by,bz] = computePixelSize(FOV, N, offset, cType)
+function [xx,yy,zz,dx,dy,dz,bx,by,bz] = computePixelSize(FOV, N, offset, cType, varargin)
 %COMPUTEPIXELSIZE Computes the pixel size and distance from origin
 %   Utility function for OMEGA
-
+if isempty(varargin)
+    varargin{1} = 0;
+end
 % Pixel boundaries
 etaisyys = -(FOV) / 2;
 dx = zeros(1,size(FOV,2));
@@ -21,7 +23,7 @@ for kk = size(FOV,2) : - 1 : 1
     dz(kk) = diff(zz(1:2));
 
     % Distance of image from the origin
-    if kk == 1
+    if kk == 1 || varargin{1} == 2
         bx(kk) = xx(1,1);
         by(kk) = yy(1,1);
         bz(kk) = zz(1,1);

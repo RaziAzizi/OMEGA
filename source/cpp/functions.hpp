@@ -227,6 +227,10 @@ inline int updateInputs(AF_im_vectors& vec, const scalarStruct& inputScalars, Pr
 #elif defined(OPENCL)
 	int status = 0;
 	cl::detail::size_t_array region = { inputScalars.Nx[ii], inputScalars.Ny[ii], inputScalars.Nz[ii] };
+	cl::detail::size_t_array region_c;
+	if(inputScalars.multiResolution == 2){
+	   region_c= { inputScalars.Nx[1], inputScalars.Ny[1], inputScalars.Nz[1] };
+	}
 #endif
 	if (inputScalars.FPType == 5) {
 		af::array im;
@@ -554,27 +558,67 @@ inline int updateInputs(AF_im_vectors& vec, const scalarStruct& inputScalars, Pr
 			}
 			else if (DEBUG)
 				mexPrint("Input image created\n");
+
+
+		if(inputScalars.multiResolution == 2){
+			proj.vec_opencl.d_image_os_c = cl::Image3D(proj.CLContext, CL_MEM_READ_ONLY, proj.format, region_c[0], region_c[1], region_c[2], 0, 0, NULL, &status);
+			if (status != CL_SUCCESS) {
+					getErrorString(status);
+					mexPrint("Failed to create input images\n");
+					return -1;
+			}
+		    
+		}
+		    cl_mem* im_c;
 			cl_mem* im;
+			
 			if (inputScalars.use_psf)
 				im = vec.im_os_blurred[ii].device<cl_mem>();
 			else
 				im = vec.im_os[ii].device<cl_mem>();
 			cl::Buffer d_im_os = cl::Buffer(*im, true);
+			///// COMMENT /////
+			// You'll need to add the condition check here, i.e. if (inputScalars.multiResolution == 2) ...
+			// This applies to ALL your modifications after this point
+			// As a bonus, you could add error checking for both images. status contains the status message of the operation, i.e. whether is succeeded or not
+			// See the below if (status != 0) or above if (status != CL_SUCCESS) sections
+			///// END COMMENT /////
+			cl::Buffer d_im_os_c;
+          if(inputScalars.multiResolution == 2){
+			  
+			  im_c = vec.im_os[1].device<cl_mem>();
+		      d_im_os_c = cl::Buffer(*im_c, true);
+		  }
 			proj.CLCommandQueue[0].finish();
 			status = proj.CLCommandQueue[0].enqueueCopyBufferToImage(d_im_os, proj.vec_opencl.d_image_os, 0, proj.origin, region);
+			if (status != 0) {
+				  getErrorString(status);
+				   mexPrint("Image copy failed\n");
+				   return -1;
+			   }else if (DEBUG)
+				mexPrint("Input copy succeeded\n");
+						
+			if(inputScalars.multiResolution == 2){
+				status = proj.CLCommandQueue[0].enqueueCopyBufferToImage(d_im_os_c, proj.vec_opencl.d_image_os_c, 0, proj.origin, region_c);
+	  	      if (status != 0) {
+				  getErrorString(status);
+				   mexPrint("Image copy failed\n");
+				   return -1;
+			   }
+			}else if (DEBUG)
+				mexPrint("Input copy succeeded\n");
+
 			proj.CLCommandQueue[0].finish();
 			if (inputScalars.use_psf)
 				vec.im_os_blurred[ii].unlock();
 			else
 				vec.im_os[ii].unlock();
-			delete im;
-			if (status != 0) {
-				getErrorString(status);
-				mexPrint("Image copy failed\n");
-				return -1;
+            delete im;
+			if(inputScalars.multiResolution == 2){
+			    vec.im_os[1].unlock();
+				delete im_c;
 			}
-			else if (DEBUG)
-				mexPrint("Input copy succeeded\n");
+	
 		}
 #else
 		if (inputScalars.use_psf)
@@ -2172,7 +2216,10 @@ inline int powerMethod(scalarStruct& inputScalars, Weighting& w_vec, std::vector
 						outputFP = af::constant(0.f, m_size);
 					else
 						outputFP = af::constant(0.f, m_size * inputScalars.nBins);
-				for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
+				///// COMMENT /////
+				// You should modify the forward projection loop here the same way you did in reconstructionAF.h, i.e. for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
+				///// END COMMENT /////
+				for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
 					if (inputScalars.projector_type == 6) {
 						forwardProjectionType6(outputFP, w_vec, vec, inputScalars, length[0], 0, proj, ii, atten);
 						outputFP.eval();
@@ -2358,7 +2405,10 @@ inline int powerMethod(scalarStruct& inputScalars, Weighting& w_vec, std::vector
 						outputFP = af::constant(0.f, m_size);
 					else
 						outputFP = af::constant(0.f, m_size * inputScalars.nBins);
-				for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
+				///// COMMENT /////
+				// You should modify the forward projection loop here the same way you did in reconstructionAF.h, i.e. for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
+				///// END COMMENT /////
+				for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
 					if (inputScalars.projector_type == 6) {
 						forwardProjectionType6(outputFP, w_vec, vec, inputScalars, length[0], 0, proj, ii, atten);
 						outputFP.eval();

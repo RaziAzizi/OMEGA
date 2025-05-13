@@ -197,6 +197,8 @@ class ProjectorClass {
 		const bool siddonVal = (inputScalars.FPType == 1 || inputScalars.BPType == 1 || inputScalars.FPType == 4 || inputScalars.BPType == 4) ? true : false;
 		if (constantBuffer || (inputScalars.listmode > 0 && !inputScalars.indexBased))
 			options += " -DUSEGLOBAL";
+		if(inputScalars.multiResolution==2)
+		    options += " -DSMR";
 		if (inputScalars.raw == 1)
 			options += " -DRAW";
 		if (inputScalars.maskFP) {
@@ -2528,18 +2530,20 @@ public:
 			mexPrintBase("global[2] = %u\n", global[2]);
 			mexPrintBase("erotus[0] = %u\n", erotus[0]);
 			mexPrintBase("erotus[1] = %u\n", erotus[1]);
-			mexPrintBase("d_N[ii].s0 = %u\n", d_N[ii].s[0]);
-			mexPrintBase("d_N[ii].s1 = %u\n", d_N[ii].s[1]);
-			mexPrintBase("d_N[ii].s2 = %u\n", d_N[ii].s[2]);
-			mexPrintBase("d[ii].s0 = %f\n", d[ii].s[0]);
-			mexPrintBase("d[ii].s1 = %f\n", d[ii].s[1]);
-			mexPrintBase("d[ii].s2 = %f\n", d[ii].s[2]);
-			mexPrintBase("b[ii].s0 = %f\n", b[ii].s[0]);
-			mexPrintBase("b[ii].s1 = %f\n", b[ii].s[1]);
-			mexPrintBase("b[ii].s2 = %f\n", b[ii].s[2]);
-			mexPrintBase("bmax[ii].s0 = %f\n", bmax[ii].s[0]);
-			mexPrintBase("bmax[ii].s1 = %f\n", bmax[ii].s[1]);
-			mexPrintBase("bmax[ii].s2 = %f\n", bmax[ii].s[2]);
+            for (int uu = 0; uu <= inputScalars.nMultiVolumes; uu++) {
+			mexPrintBase("d_N[ii].s0 = %u\n", d_N[uu].s[0]);
+			mexPrintBase("d_N[ii].s1 = %u\n", d_N[uu].s[1]);
+			mexPrintBase("d_N[ii].s2 = %u\n", d_N[uu].s[2]);
+			mexPrintBase("d[ii].s0 = %f\n", d[uu].s[0]);
+			mexPrintBase("d[ii].s1 = %f\n", d[uu].s[1]);
+			mexPrintBase("d[ii].s2 = %f\n", d[uu].s[2]);
+			mexPrintBase("b[ii].s0 = %f\n", b[uu].s[0]);
+			mexPrintBase("b[ii].s1 = %f\n", b[uu].s[1]);
+			mexPrintBase("b[ii].s2 = %f\n", b[uu].s[2]);
+			mexPrintBase("bmax[ii].s0 = %f\n", bmax[uu].s[0]);
+			mexPrintBase("bmax[ii].s1 = %f\n", bmax[uu].s[1]);
+			mexPrintBase("bmax[ii].s2 = %f\n", bmax[uu].s[2]);
+            }
 			mexPrintBase("global.dimensions() = %u\n", global.dimensions());
 			mexPrintBase("local.dimensions() = %u\n", local.dimensions());
 			mexPrintBase("kernelIndFPSubIter = %u\n", kernelIndFPSubIter);
@@ -2565,6 +2569,7 @@ public:
 			mexPrintBase("osa_iter = %u\n", osa_iter);
 			mexPrintBase("memSize = %u\n", memSize);
 			mexPrintBase("subsetType = %u\n", inputScalars.subsetType);
+			mexPrintBase("nMultiVolumes = %u\n", inputScalars.nMultiVolumes);
 			mexEval();
 		}
 
@@ -2582,10 +2587,13 @@ public:
 				}
 			}
 		}
-		if (inputScalars.FPType == 5 || inputScalars.FPType == 4) {
-			getErrorString(kernelFP.setArg(kernelIndFPSubIter++, d_N[ii]));
-			getErrorString(kernelFP.setArg(kernelIndFPSubIter++, b[ii]));
-			if (inputScalars.FPType == 5) {
+		
+
+			
+		if (inputScalars.FPType == 5) {
+
+				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, d_N[ii]));
+				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, b[ii]));
 				status = kernelFP.setArg(kernelIndFPSubIter++, inputScalars.dSize[ii]);
 				if (status != CL_SUCCESS) {
 					getErrorString(status);
@@ -2601,13 +2609,33 @@ public:
 					getErrorString(status);
 					return -1;
 				}
-			}
-			else {
-				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, bmax[ii]));
-				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, inputScalars.d_Scale4[ii]));
-			}
 		}
+
 		if (inputScalars.FPType == 4) {
+
+			getErrorString(kernelFP.setArg(kernelIndFPSubIter++, d_N[ii]));
+			getErrorString(kernelFP.setArg(kernelIndFPSubIter++, b[ii]));
+			getErrorString(kernelFP.setArg(kernelIndFPSubIter++, bmax[ii]));
+			getErrorString(kernelFP.setArg(kernelIndFPSubIter++, inputScalars.d_Scale4[ii]));
+			
+			if(inputScalars.multiResolution==2){
+
+				//getErrorString(kernelFP.setArg(kernelIndFPSubIter++, d_N[1]));
+				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, b[1]));
+				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, bmax[1]));
+				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, inputScalars.d_Scale4[1]));
+
+				///// COMMENT /////
+				// This (d_image_os_c) is currently in different spot when compared to the one in projectorType4.cl
+				// In projectorType4.cl you input the coarse region image after d_output
+				// You either should move the coarse region image in projectorType4.cl to before d_OSEM or move it here after d_output, whichever you like
+				///// END COMMENT /////
+				status = kernelFP.setArg(kernelIndFPSubIter++, vec_opencl.d_image_os_c );
+				if (status != CL_SUCCESS) {
+				getErrorString(status);
+				return -1;
+				}				
+			}	
 			status = kernelFP.setArg(kernelIndFPSubIter++, vec_opencl.d_image_os);
 			if (status != CL_SUCCESS) {
 				getErrorString(status);
@@ -3186,6 +3214,7 @@ public:
 				if (inputScalars.offset)
 					kernelBP.setArg(kernelIndBPSubIter++, d_T[osa_iter]);
 				if (inputScalars.BPType == 5 || inputScalars.BPType == 4) {
+					
 					getErrorString(kernelBP.setArg(kernelIndBPSubIter++, d_N[ii]));
 					status = kernelBP.setArg(kernelIndBPSubIter++, b[ii]);
 					if (status != CL_SUCCESS) {
@@ -3196,7 +3225,26 @@ public:
 					if (status != CL_SUCCESS) {
 						getErrorString(status);
 						return -1;
+					 }
+					 ///// COMMENT /////
+					 // In projectorType4.cl you always input the dense region variables, but here you have the condition inputScalars.multiResolution == 2
+					 // Either add the #ifdef SMR to projectorType4.cl inputs or remove the inputScalars.multiResolution == 2 condition here
+					 ///// END COMMENT /////
+					if(inputScalars.BPType == 4 && inputScalars.multiResolution == 2){
+					   getErrorString(kernelBP.setArg(kernelIndBPSubIter++, d_N[0]));
+					   status = kernelBP.setArg(kernelIndBPSubIter++, b[0]);
+					   if (status != CL_SUCCESS) {
+						   getErrorString(status);
+						   return -1;
+					   }
+					   status = kernelBP.setArg(kernelIndBPSubIter++, d[0]);
+					   if (status != CL_SUCCESS) {
+						   getErrorString(status);
+						   return -1;
+						}
+						
 					}
+
 					if (inputScalars.BPType == 5) {
 						status = kernelBP.setArg(kernelIndBPSubIter++, inputScalars.d_Scale[ii]);
 						if (status != CL_SUCCESS) {
@@ -3216,6 +3264,8 @@ public:
 							return -1;
 						}
 					}
+				
+			
 				}
 				if (inputScalars.BPType == 4) {
 					if (inputScalars.useBuffers)

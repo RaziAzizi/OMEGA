@@ -576,7 +576,7 @@ classdef projectorClass
             end
 
             [xx,yy,zz,obj.param.dx,obj.param.dy,obj.param.dz,obj.param.bx,obj.param.by,obj.param.bz] = computePixelSize([obj.param.FOVa_x; obj.param.FOVa_y; obj.param.axial_fov], [obj.param.Nx; obj.param.Ny; obj.param.Nz], ...
-                [obj.param.oOffsetX; obj.param.oOffsetY; obj.param.oOffsetZ], obj.param.cType);
+                [obj.param.oOffsetX; obj.param.oOffsetY; obj.param.oOffsetZ], obj.param.cType, obj.param.useMultiResolutionVolumes);
             obj.param.Nx = uint32(obj.param.Nx);
             obj.param.Ny = uint32(obj.param.Ny);
             obj.param.Nz = uint32(obj.param.Nz);

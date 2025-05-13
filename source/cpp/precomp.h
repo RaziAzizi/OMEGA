@@ -42,7 +42,7 @@ typedef struct structForScalars {
 	uint32_t projector_type = 1, attenuation_correction = 0, randoms_correction = 0, scatter = 0, normalization_correction = 0, 
 		nColsD, nRowsD, size_z, subsets = 1, det_per_ring, Niter = 1, Nt = 1, subsetType = 0, nMultiVolumes = 0, nLayers = 1, 
 		nRekos = 1, osa_iter0 = 0, nRekos2 = 0, subsetsUsed = 1, TOFsubsets = 1, Nxy = 0U, NxOrig = 0U, NyOrig = 0U, NzOrig = 0U, NxPrior = 0U, NyPrior = 0U, NzPrior = 0U,
-		BPType = 1, FPType = 1, adaptiveType = 0, rings = 0, FISTAType = 0, maskFPZ = 1, maskBPZ = 1, currentSubset = 0;
+		BPType = 1, FPType = 1, adaptiveType = 0, rings = 0, FISTAType = 0, maskFPZ = 1, maskBPZ = 1, currentSubset = 0,nMultiVolumes_s = 0;
 	uint32_t platform = 0;
 	std::vector<uint32_t> Nx{ 1, 0, 0, 0, 0, 0, 0 }, Ny{ 1, 0, 0, 0, 0, 0, 0 }, Nz{ 1, 0, 0, 0, 0, 0, 0 };
 	float crystal_size_z = 0.f, epps = 1e-6f, sigma_x = 0.f, tube_width = 0.f, bmin = 0.f, bmax = 0.f, Vmax = 0.f, global_factor = 1.f,
@@ -52,9 +52,13 @@ typedef struct structForScalars {
 	bool use_psf = false, TOF = false, SPECT = false, pitch = false, PET = false, meanFP = false, meanBP = false,
 		maskFP = false, maskBP = false, orthXY = false, orthZ = false, CT = false, atomic_64bit = false, atomic_32bit = false, loadTOF = true,
 		saveIter = false, enforcePositivity = false, computeSensImag = false, useMAD = true, useImages = false, eFOV = false,
-		useExtendedFOV = false, use64BitIndices = false, TGV2D = false, multiResolution = false, offset = false, relaxScaling = false,
+		useExtendedFOV = false, use64BitIndices = false, TGV2D = false, offset = false, relaxScaling = false,
 		computeRelaxation = false, storeFP = false, deconvolution = false, CTAttenuation = true, largeDim = false, storeResidual = false,
 		useBuffers = true, useFDKWeights = false, indexBased = false, FISTAAcceleration = false, stochastic = false, useTotLength = true;
+	///// COMMENT /////
+	// I'd recommend a default value here, just to be on the safe side, i.e. uint32_t multiResolution = 0;
+	///// END COMMENT /////
+	uint32_t multiResolution= 0; // 0: no multi-resolution, 1:original multi-resolution, 2: single multi-resolution
 	int64_t Nf = 0;
 	std::vector<CTYPE3> d_Scale;
 	std::vector<CTYPE3> d_Scale4;
@@ -86,7 +90,8 @@ typedef struct _OpenCL_im_vectors {
 	cl::Buffer d_meanFP, d_meanBP;
 	cl::Buffer	d_im;
 	std::vector<cl::Buffer> d_rhs_os;
-	cl::Image3D d_image_os, d_image_os_int;
+	cl::Image3D d_image_os, d_image_os_c, d_image_os_int;
+	
 } OpenCL_im_vectors;
 #elif defined(CUDA)
 typedef struct _CUDA_im_vectors {
