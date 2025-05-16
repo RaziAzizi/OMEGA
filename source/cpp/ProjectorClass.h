@@ -199,6 +199,8 @@ class ProjectorClass {
 			options += " -DUSEGLOBAL";
 		if(inputScalars.multiResolution==2)
 		    options += " -DSMR";
+		if(inputScalars.multiResolution==3)
+		    options += " -DSMR2";	
 		if (inputScalars.raw == 1)
 			options += " -DRAW";
 		if (inputScalars.maskFP) {
@@ -2618,18 +2620,14 @@ public:
 			getErrorString(kernelFP.setArg(kernelIndFPSubIter++, bmax[ii]));
 			getErrorString(kernelFP.setArg(kernelIndFPSubIter++, inputScalars.d_Scale4[ii]));
 			
-			if(inputScalars.multiResolution==2){
+			if(inputScalars.multiResolution==2 || inputScalars.multiResolution==3 ){
 
 				//getErrorString(kernelFP.setArg(kernelIndFPSubIter++, d_N[1]));
 				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, b[1]));
 				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, bmax[1]));
 				getErrorString(kernelFP.setArg(kernelIndFPSubIter++, inputScalars.d_Scale4[1]));
 
-				///// COMMENT /////
-				// This (d_image_os_c) is currently in different spot when compared to the one in projectorType4.cl
-				// In projectorType4.cl you input the coarse region image after d_output
-				// You either should move the coarse region image in projectorType4.cl to before d_OSEM or move it here after d_output, whichever you like
-				///// END COMMENT /////
+			
 				status = kernelFP.setArg(kernelIndFPSubIter++, vec_opencl.d_image_os_c );
 				if (status != CL_SUCCESS) {
 				getErrorString(status);
@@ -3173,6 +3171,9 @@ public:
 				}
 				if (inputScalars.BPType == 4)
 					if (!inputScalars.largeDim)
+					    if(inputScalars.multiResolution==3)
+						global = { inputScalars.Nx[1] + erotusBP[0][1], inputScalars.Ny[1] + erotusBP[1][1], inputScalars.Nz[1] };	
+						else
 						global = { inputScalars.Nx[ii] + erotusBP[0][ii], inputScalars.Ny[ii] + erotusBP[1][ii], (inputScalars.Nz[ii] + NVOXELS - 1) / NVOXELS };
 					else
 						global = { inputScalars.Nx[ii] + erotusBP[0][ii], inputScalars.Ny[ii] + erotusBP[1][ii], inputScalars.Nz[ii] };
@@ -3226,10 +3227,7 @@ public:
 						getErrorString(status);
 						return -1;
 					 }
-					 ///// COMMENT /////
-					 // In projectorType4.cl you always input the dense region variables, but here you have the condition inputScalars.multiResolution == 2
-					 // Either add the #ifdef SMR to projectorType4.cl inputs or remove the inputScalars.multiResolution == 2 condition here
-					 ///// END COMMENT /////
+				
 					if(inputScalars.BPType == 4 && inputScalars.multiResolution == 2){
 					   getErrorString(kernelBP.setArg(kernelIndBPSubIter++, d_N[0]));
 					   status = kernelBP.setArg(kernelIndBPSubIter++, b[0]);
@@ -3244,7 +3242,20 @@ public:
 						}
 						
 					}
-
+					if(inputScalars.BPType == 4 && inputScalars.multiResolution == 3){
+						getErrorString(kernelBP.setArg(kernelIndBPSubIter++, d_N[1]));
+						status = kernelBP.setArg(kernelIndBPSubIter++, b[1]);
+						if (status != CL_SUCCESS) {
+							getErrorString(status);
+							return -1;
+						}
+						status = kernelBP.setArg(kernelIndBPSubIter++, d[1]);
+						if (status != CL_SUCCESS) {
+							getErrorString(status);
+							return -1;
+						 }
+						 
+					 }
 					if (inputScalars.BPType == 5) {
 						status = kernelBP.setArg(kernelIndBPSubIter++, inputScalars.d_Scale[ii]);
 						if (status != CL_SUCCESS) {
@@ -3264,8 +3275,7 @@ public:
 							return -1;
 						}
 					}
-				
-			
+
 				}
 				if (inputScalars.BPType == 4) {
 					if (inputScalars.useBuffers)
@@ -3276,6 +3286,8 @@ public:
 						getErrorString(status);
 						return -1;
 					}
+
+
 					if (inputScalars.CT && inputScalars.DSC > 0.f) {
 						getErrorString(kernelBP.setArg(kernelIndBPSubIter++, d_angle));
 						getErrorString(kernelBP.setArg(kernelIndBPSubIter++, inputScalars.DSC));
@@ -3285,6 +3297,15 @@ public:
 						getErrorString(status);
 						return -1;
 					}
+					if(inputScalars.multiResolution==3 ){
+						status = kernelBP.setArg(kernelIndBPSubIter++, vec_opencl.d_rhs_os[1]);
+						if (status != CL_SUCCESS) {
+							getErrorString(status);
+							return -1;
+						}
+
+					} 
+
 					if (compSens)
 						status = kernelBP.setArg(kernelIndBPSubIter++, d_xFull[0]);
 					else

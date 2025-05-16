@@ -115,7 +115,7 @@ options.offangle = (3*pi)/2;
 options.useExtrapolation = false;
 
 %%% Use extended FOV
-options.useEFOV = false;
+options.useEFOV = true;
 
 % Use transaxial extended FOV (this is off by default)
 options.transaxialEFOV = true;
@@ -133,7 +133,7 @@ options.axialExtrapolation = true;
 
 % Setting this to true uses multi-resolution reconstruction when using
 % extended FOV. Only applies to extended FOV!
-options.useMultiResolutionVolumes = 0;
+options.useMultiResolutionVolumes = 3;
 
 % This is the scale value for the multi-resolution volumes. The original
 % voxel size is divided by this value and then used as the voxel size for

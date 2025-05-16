@@ -95,18 +95,18 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 #ifdef PYTHON
 	const uint d_Nx, const uint d_Ny, const uint d_Nz, const float bx, const float by, const float bz, 
     const float d_bmaxx, const float d_bmaxy, const float d_bmaxz, const float d_scalex, const float d_scaley, const float d_scalez,
-#ifdef SMR
+#if defined(SMR)|| defined(SMR2) 
     const float bx_c, const float by_c, const float bz_c, 
     const float d_bmaxx_c, const float d_bmaxy_c, const float d_bmaxz_c, const float d_scalex_c,const float d_scaley_c, const float d_scalez_c,
 #endif
 #else
 	const uint3 d_N, const float3 b, const float3 bmax, const float3 d_scale,
-#ifdef SMR
+#if defined(SMR)|| defined(SMR2) 
     const float3 b_c, const float3 bmax_c, const float3 d_scale_c, 
 #endif
 #endif
 #ifdef FP
-#ifdef SMR
+#if defined(SMR)|| defined(SMR2) 
     IMAGE3D d_OSEM_c,
 #endif
     IMAGE3D d_OSEM, CLGLOBAL float* CLRESTRICT d_output,
@@ -215,7 +215,7 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 	const float3 d_scale = make_float3(d_scalex, d_scaley, d_scalez);
 	const float3 b = make_float3(bx, by, bz);
 	const float3 bmax = make_float3(d_bmaxx, d_bmaxy, d_bmaxz);
-#ifdef SMR
+#if defined(SMR)|| defined(SMR2) 
 	const float3 d_scale_c = make_float3(d_scalex_c, d_scaley_c, d_scalez_c);
 	const float3 b_c = make_float3(bx_c, by_c, bz_c);
 	const float3 bmax_c = make_float3(d_bmaxx_c, d_bmaxy_c, d_bmaxz_c);
@@ -283,7 +283,7 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 			lor++;
 #endif  //////////////// END MULTIRAY ////////////////
 	float3 s, d;
-#ifdef SMR
+#if defined(SMR)|| defined(SMR2) 
     float3 s_c, d_c,v_c;
 #endif
 #if (defined(CT) || defined(SPECT)) && !defined(LISTMODE) && !defined(PET) // CT data
@@ -338,11 +338,9 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 #ifdef TOF //////////////// TOF ////////////////
     float TOFSum = 0.f;
 #endif //////////////// END TOF ////////////////
-	///// COMMENT /////
-	// I added your modifications to the point where I believe they should be
-	///// END COMMENT /////
+	
    float temp=0.f;
-#ifdef SMR
+#if defined(SMR)|| defined(SMR2) 
   
        const float3 bmin_c = b_c;
        const float3 tBack_c = (bmin_c - s) / v;
@@ -673,6 +671,12 @@ void projectorType4Forward(const uint d_size_x, const uint d_sizey,
 *******************************************************************************************************************************************/
 
 #if defined(BP) && defined(CT)// START BP
+
+#ifdef SMR2
+#undef NVOXELS
+#define NVOXELS 1
+#endif
+
 KERNEL2
 void projectorType4Backward(const uint d_size_x, const uint d_sizey, 
 #ifdef PYTHON
@@ -687,16 +691,24 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
 	const uint d_Nx, const uint d_Ny, const uint d_Nz, const float bx, const float by, const float bz, 
     const float d_dx, const float d_dy, const float d_dz,
     
-#ifdef SMR	
+#ifdef SMR //in SMR they are for dense area and in SMR2 they are for coarse area
     const uint d_Nx_d, const uint d_Ny_d, const uint d_Nz_d, const float bx_d, const float by_d, const float bz_d, 
     const float d_dx_d, const float d_dy_d, const float d_dz_d,
 #endif
+#ifdef SMR2
+    const uint d_Nx_c, const uint d_Ny_c, const uint d_Nz_c, const float bx_c, const float by_c, const float bz_c, 
+    const float d_dx_c, const float d_dy_c, const float d_dz_c,
+#endif
 #else
 	const uint3 d_N, const float3 b, const float3 d_d, 
-#ifdef SMR	
+#ifdef SMR 
     const uint3 d_N_d, const float3 b_d, const float3 d_d_d, 
 #endif
+#ifdef SMR2  
+    const uint3 d_N_c, const float3 b_c, const float3 d_d_c, 
 #endif
+#endif
+
     const float kerroin, 
 #ifdef USEIMAGES
     IMAGE3D d_forw, 
@@ -707,6 +719,10 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
     CONSTANT float* angle, const float DSC, 
 #endif
     CLGLOBAL float* CLRESTRICT d_OSEM, 
+#ifdef SMR2
+    CLGLOBAL float* CLRESTRICT d_OSEM_c, 
+#endif   
+
 #if defined(USEGLOBAL)
 	const CLGLOBAL float* CLRESTRICT d_xyz,
 #else
@@ -727,6 +743,7 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
     const CLGLOBAL uchar* CLRESTRICT maskBP,
 #endif
 #endif
+
     const LONG d_nProjections, const int ii) {
 
     const int3 i = MINT3(GID0, GID1, GID2 * NVOXELS);
@@ -736,10 +753,24 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
 #ifdef SMR 
     const uint3 d_N_d = make_uint3(d_Nx_d, d_Ny_d, d_Nz_d);
 #endif
+
+#ifdef SMR2
+    const uint3 d_N_c = make_uint3(d_Nx_c, d_Ny_c, d_Nz_c);
 #endif
+
+#endif
+
+#ifdef SMR2
+    if (i.x >= d_N_c.x || i.y >= d_N_c.y || i.z >= d_N_c.z)
+        return;
+    size_t idx = GID0 + GID1 * d_N_c.x + GID2 * d_N_c.y * d_N_c.x;
+#else
     if (i.x >= d_N.x || i.y >= d_N.y || i.z >= d_N.z)
         return;
     size_t idx = GID0 + GID1 * d_N.x + GID2 * NVOXELS * d_N.y * d_N.x;
+#endif
+
+
 #ifdef MASKBP
     if (ii == 0) {
 #ifdef USEIMAGES
@@ -771,15 +802,26 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
 	const float2 d_dPitch = make_float2(d_dPitchX, d_dPitchY);
 	const float3 d_d = make_float3(d_dx, d_dy, d_dz);
 	const float3 b = make_float3(bx, by, bz);
-#ifdef SMR 
+#ifdef SMR //
     const float3 d_d_d = make_float3(d_dx_d, d_dy_d, d_dz_d);
 	const float3 b_d = make_float3(bx_d, by_d, bz_d);
-#endif	
+#endif
+#ifdef SMR2
+    const float3 d_d_c = make_float3(d_dx_c, d_dy_c, d_dz_c);
+	const float3 b_c = make_float3(bx_c, by_c, bz_c);
+#endif
+
 #endif
      // create bmax for dense area
-#ifdef SMR 	 
+#ifdef SMR //for dense area
      const float3 bmax_d=convert_float3(d_N_d)*d_d_d+b_d;
-#endif	 
+#endif
+
+#ifdef SMR2 //for dense area
+  const float3 bmax=convert_float3(d_N)*d_d+b;
+#endif
+
+
     float temp[NVOXELS];
     float wSum[NVOXELS];
     for (int zz = 0; zz < NVOXELS; zz++) {
@@ -787,7 +829,12 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
         if (no_norm == 0u)
             wSum[zz] = 0.f;
     }
+#ifdef SMR2
+     float3 dV = CFLOAT3(i) * d_d_c + d_d_c / 2.f + b_c;  
+#else
     float3 dV = CFLOAT3(i) * d_d + d_d / 2.f + b;
+#endif   
+
     const float2 koko = MFLOAT2(CFLOAT(d_size_x) * d_dPitch.x, CFLOAT(d_sizey) * d_dPitch.y );
     const float2 indeksi = MFLOAT2(CFLOAT(d_size_x) / 2.f, CFLOAT(d_sizey) / 2.f );
     for (int kk = 0; kk < d_nProjections; kk++) {
@@ -816,7 +863,14 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
 #else
         const float vApu = FMAD(v.x, v.x, v.y * v.y);
 #endif
-        const float dApu = d_d.z * cP.z;
+
+       
+#ifdef SMR2
+        const float dApu = d_d_c.z * cP.z;//we dont use this in SMR2 coarse area
+#else
+         const float dApu = d_d.z * cP.z;
+#endif
+
         const float pz = (CFLOAT(kk) + 0.5f) / CFLOAT(d_nProjections);
 #ifndef __CUDACC__ 
 #pragma unroll NVOXELS
@@ -825,6 +879,96 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
             const uint ind = i.z + zz;
             if (ind >= d_N.z)
                 break;
+#ifdef SMR2
+            if((dV_.x >=b.x && dV_.y >=b.y && dV_.z >=b.z) && (dV_.x <=bmax.x && dV_.y <=bmax.y && dV_.z <=bmax.z )){
+                
+                uint n_v_d = CUINT_rte(d_d_c.x/d_d.x);
+		        float3 dV_d;//Dense area voxels location               
+                // Determine the coarse region voxel index in the dense region, i.e. how many coarse voxels are we from the edge of the dense region
+                // For example if we are in the second coarse voxel that is inside the dense region, the voxel index of the dense region voxels need to be moved accordingly
+                float3 cIndex = (((dV_-d_d_c/2.f) - b) / d_d_c * n_v_d);
+ 
+               // Move to the beginning of the first dense voxel
+               //////comment//////
+               // Because -(d_d_c/2.f-d_d/2.f) equals -d_d_c/2.f+d_d/2.f
+               dV_-= (d_d_c/2.f-d_d/2.f);
+               uint vIndex = CUINT_rte(cIndex.x) + CUINT_rte(cIndex.y) * d_N.x + CUINT_rte(cIndex.z) * d_N.x * d_N.y;
+               uint start = vIndex;
+		       //computing the dense voxels locations 
+               for (uint ix=0;ix<n_v_d;ix++){
+				   
+				    dV_d.x=d_d.x*ix+dV_.x;
+				   
+				    for (uint iy=0;iy<n_v_d;iy++){
+					    dV_d.y=d_d.y*iy+dV_.y;
+					 
+					    for (uint iz=0;iz<n_v_d;iz++){
+						
+						     dV_d.z=d_d.z*iz+dV_.z;
+
+							 // Current voxel index, linear index
+                             vIndex = start + ix + iy * d_N.x + iz * d_N.x * d_N.y;
+                             if (vIndex >= d_N.x * d_N.y * d_N.z)
+                                continue;
+							 v = dV_d - s;
+							 lowerPart = -dot(v, cP);
+#ifndef USEMAD
+                            const float vApu_d = v.x * v.x + v.y * v.y;
+#else
+                            const float vApu_d = FMAD(v.x, v.x, v.y * v.y);
+#endif
+                            const float dApu_d = d_d.z * cP.z;
+                        // This is the (normalized) z-coordinate of the projection. This is mandatory for GPU-based hardware interpolation      
+                            const float pz_d = (CFLOAT(kk) + 0.5f) / CFLOAT(d_nProjections);
+                             const float t = DIVIDE(upperPart, lowerPart);
+#ifndef USEMAD
+                             float3 p = s + v * t;
+                             const float l1 = vApu_d + v.z * v.z;
+#else
+                             float3 p = FMAD3(t, v, s);
+                             const float l1 = FMAD(v.z, v.z, vApu);
+#endif
+#ifdef FDK
+                             float weight = (DSC + dV.x * COSF(angle[kk]) - dV.y * SINF(angle[kk]));
+                             weight = (DSC * DSC) / (weight * weight) * (M_PI_F / (CFLOAT(d_nProjections) * d_dPitch.x));
+#else
+                             const float L = distance(p, s);
+                             const float weight = (L * L * L) / (l1)*kerroin;
+#endif
+                             p -= d3;
+                             float px = dot(p, normX);
+                             float py = dot(p, normY);
+                             float yVar = 0.f;
+
+#ifdef USEIMAGES
+#ifdef CUDA
+                            if (px <= 1.f && py <= 1.f && pz_d <= 1.f && px >= 0.f && py >= 0.f && pz_d >= 0.f)
+                            yVar = tex3D<float>(d_forw, px, py, pz);
+#else
+                           if (px <= 1.f && py <= 1.f && pz_d <= 1.f && px >= 0.f && py >= 0.f && pz_d >= 0.f)
+                           yVar = read_imagef(d_forw, samplerIm, CFLOAT4(px, py, pz_d, 0.f)).w;
+#endif
+#else
+                           if (px < 1.f && py < 1.f && pz_d < 1.f && px >= 0.f && py >= 0.f && pz_d >= 0.f) {
+                              const LONG indX = CLONG_rtz(px * CFLOAT(d_size_x));
+                              const LONG indY = CLONG_rtz(py * CFLOAT(d_sizey)) * CLONG_rtz(d_size_x);
+                              const LONG indZ = CLONG_rtz(pz_d * CFLOAT(d_nProjections)) * CLONG_rtz(d_sizey) * CLONG_rtz(d_size_x);
+                              yVar = d_forw[indX + indY + indZ];
+                            }
+#endif
+					
+                       	 // Insert the computed values into the actual backprojection image
+	                   	 d_OSEM[vIndex] += yVar * weight;;
+								 
+					    }
+					}
+			    }
+
+            continue;
+            } 
+            
+
+#endif //SMR2
 #ifdef SMR                
             if(ii==1){
                     if((dV_.x >=b_d.x && dV_.y >=b_d.y && dV_.z >=b_d.z) && (dV_.x <=bmax_d.x && dV_.y <=bmax_d.y && dV_.z <=bmax_d.z ))
@@ -903,9 +1047,21 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
  #endif            
             v.z += d_d.z;
             lowerPart -= dApu;
-            
+
+//#ifdef SMR2        
+ //       next2:
+//#endif    
         }
+
     }
+
+         
+#ifdef SMR2 
+  if(!((dV.x >=b.x && dV.y >=b.y && dV.z >=b.z) && (dV.x <=bmax.x && dV.y <=bmax.y && dV.z <=bmax.z ))){
+            d_OSEM_c[idx] += temp[0];
+    }
+
+#else
     for (int zz = 0; zz < NVOXELS; zz++) {
         const uint ind = i.z + zz;
         if (ind >= d_N.z)
@@ -916,5 +1072,8 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
                 d_Summ[idx] = wSum[zz];
         idx += d_N.y * d_N.x;
     }
+#endif    
 }
+
+
 #endif // END BP

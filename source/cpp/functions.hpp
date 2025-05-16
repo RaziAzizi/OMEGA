@@ -195,21 +195,30 @@ inline void transferSensitivityImage(af::array& apuSum, ProjectorClass& proj) {
 /// <param name="rhs_os the backprojection"></param>
 /// <param name="proj the projector class object"></param>
 /// <returns></returns>
-inline int transferRHS(af::array& rhs_os, ProjectorClass& proj) {
+inline int transferRHS(std::vector<af::array>& rhs_os, ProjectorClass& proj,int multiresolution_state =0,const int ii = 0) {
 	af::sync();
 	if (DEBUG) {
 		mexPrintBase("proj.vec_opencl.d_rhs_os.size() = %u\n", proj.vec_opencl.d_rhs_os.size());
 		mexEval();
 	}
-	if (proj.vec_opencl.d_rhs_os.size() < 1)
-		proj.vec_opencl.d_rhs_os.emplace_back(transferAF(rhs_os));
-	else
-		proj.vec_opencl.d_rhs_os[0] = transferAF(rhs_os);
+	// You'll need to input the std::vector instead of the af::array
+    if (proj.vec_opencl.d_rhs_os.size() < 1)
+      proj.vec_opencl.d_rhs_os.emplace_back(transferAF(rhs_os[ii]));
+    else
+      proj.vec_opencl.d_rhs_os[0] = transferAF(rhs_os[ii]);
+   // You'll need a new input variable here
+    if (multiresolution_state==3) {
+        if (proj.vec_opencl.d_rhs_os.size() < 2)
+        	proj.vec_opencl.d_rhs_os.emplace_back(transferAF(rhs_os[1]));
+        else
+    	    proj.vec_opencl.d_rhs_os[1] = transferAF(rhs_os[1]);
+        }
 	if (DEBUG) {
 		mexPrintBase("proj.vec_opencl.d_rhs_os.size() = %u\n", proj.vec_opencl.d_rhs_os.size());
 		mexEval();
 	}
 	return 0;
+
 }
 
 /// <summary>
@@ -228,9 +237,10 @@ inline int updateInputs(AF_im_vectors& vec, const scalarStruct& inputScalars, Pr
 	int status = 0;
 	cl::detail::size_t_array region = { inputScalars.Nx[ii], inputScalars.Ny[ii], inputScalars.Nz[ii] };
 	cl::detail::size_t_array region_c;
-	if(inputScalars.multiResolution == 2){
+	if(inputScalars.multiResolution == 2|| inputScalars.multiResolution == 3 ){
 	   region_c= { inputScalars.Nx[1], inputScalars.Ny[1], inputScalars.Nz[1] };
 	}
+
 #endif
 	if (inputScalars.FPType == 5) {
 		af::array im;
@@ -560,7 +570,7 @@ inline int updateInputs(AF_im_vectors& vec, const scalarStruct& inputScalars, Pr
 				mexPrint("Input image created\n");
 
 
-		if(inputScalars.multiResolution == 2){
+		if(inputScalars.multiResolution == 2 || inputScalars.multiResolution == 3  ){
 			proj.vec_opencl.d_image_os_c = cl::Image3D(proj.CLContext, CL_MEM_READ_ONLY, proj.format, region_c[0], region_c[1], region_c[2], 0, 0, NULL, &status);
 			if (status != CL_SUCCESS) {
 					getErrorString(status);
@@ -577,14 +587,9 @@ inline int updateInputs(AF_im_vectors& vec, const scalarStruct& inputScalars, Pr
 			else
 				im = vec.im_os[ii].device<cl_mem>();
 			cl::Buffer d_im_os = cl::Buffer(*im, true);
-			///// COMMENT /////
-			// You'll need to add the condition check here, i.e. if (inputScalars.multiResolution == 2) ...
-			// This applies to ALL your modifications after this point
-			// As a bonus, you could add error checking for both images. status contains the status message of the operation, i.e. whether is succeeded or not
-			// See the below if (status != 0) or above if (status != CL_SUCCESS) sections
-			///// END COMMENT /////
+	
 			cl::Buffer d_im_os_c;
-          if(inputScalars.multiResolution == 2){
+          if(inputScalars.multiResolution == 2|| inputScalars.multiResolution == 3){
 			  
 			  im_c = vec.im_os[1].device<cl_mem>();
 		      d_im_os_c = cl::Buffer(*im_c, true);
@@ -598,7 +603,7 @@ inline int updateInputs(AF_im_vectors& vec, const scalarStruct& inputScalars, Pr
 			   }else if (DEBUG)
 				mexPrint("Input copy succeeded\n");
 						
-			if(inputScalars.multiResolution == 2){
+			if(inputScalars.multiResolution == 2|| inputScalars.multiResolution == 3 ){
 				status = proj.CLCommandQueue[0].enqueueCopyBufferToImage(d_im_os_c, proj.vec_opencl.d_image_os_c, 0, proj.origin, region_c);
 	  	      if (status != 0) {
 				  getErrorString(status);
@@ -614,7 +619,7 @@ inline int updateInputs(AF_im_vectors& vec, const scalarStruct& inputScalars, Pr
 			else
 				vec.im_os[ii].unlock();
             delete im;
-			if(inputScalars.multiResolution == 2){
+			if(inputScalars.multiResolution == 2|| inputScalars.multiResolution == 3 ){
 			    vec.im_os[1].unlock();
 				delete im_c;
 			}
@@ -677,8 +682,13 @@ inline int backwardProjectionAFOpenCL(AF_im_vectors& vec, scalarStruct& inputSca
 	const int64_t* pituus = nullptr, const bool FDK = false) {
 	int status = 0;
 	outputFP.eval();
+	int multi_r=inputScalars.multiResolution;
 	if (!FDK)
 		initializeRHS(vec, inputScalars, ii);
+	if(inputScalars.multiResolution ==3)
+	    initializeRHS(vec, inputScalars, 1);
+
+
 	proj.memSize += (sizeof(float) * inputScalars.im_dim[ii]) / 1048576ULL;
 	if (DEBUG) {
 		mexPrintBase("ii = %u\n", ii);
@@ -694,7 +704,8 @@ inline int backwardProjectionAFOpenCL(AF_im_vectors& vec, scalarStruct& inputSca
 	if (DEBUG) {
 		mexPrint("Transferring backprojection output\n");
 	}
-	status = transferRHS(vec.rhs_os[ii], proj);
+
+	status = transferRHS(vec.rhs_os, proj,multi_r,ii);
 	if (status != 0) {
 		return -1;
 	}
@@ -708,6 +719,10 @@ inline int backwardProjectionAFOpenCL(AF_im_vectors& vec, scalarStruct& inputSca
 
 	 status = proj.backwardProjection(inputScalars, w_vec, osa_iter, length, pituus, compSens, ii);
 #endif
+
+   if(inputScalars. multiResolution == 3 && vec.rhs_os.size() > 1)
+        vec.rhs_os[1].unlock();
+
 	vec.rhs_os[ii].unlock();
 	outputFP.unlock();
 	if (inputScalars.meanBP && inputScalars.BPType == 5)
@@ -2216,9 +2231,7 @@ inline int powerMethod(scalarStruct& inputScalars, Weighting& w_vec, std::vector
 						outputFP = af::constant(0.f, m_size);
 					else
 						outputFP = af::constant(0.f, m_size * inputScalars.nBins);
-				///// COMMENT /////
-				// You should modify the forward projection loop here the same way you did in reconstructionAF.h, i.e. for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
-				///// END COMMENT /////
+
 				for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
 					if (inputScalars.projector_type == 6) {
 						forwardProjectionType6(outputFP, w_vec, vec, inputScalars, length[0], 0, proj, ii, atten);
@@ -2240,7 +2253,7 @@ inline int powerMethod(scalarStruct& inputScalars, Weighting& w_vec, std::vector
 				if (status != 0)
 					return -1;
 				computeIntegralImage(inputScalars, w_vec, length[0], outputFP, meanBP);
-				for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
+				for (int ii = 0; ii <= inputScalars.nMultiVolumes_sb; ii++) {
 					if (inputScalars.projector_type == 6)
 						backprojectionType6(outputFP, w_vec, vec, inputScalars, length[0], 0, proj, 0, 0, 0, 0, ii);
 					else
@@ -2405,9 +2418,7 @@ inline int powerMethod(scalarStruct& inputScalars, Weighting& w_vec, std::vector
 						outputFP = af::constant(0.f, m_size);
 					else
 						outputFP = af::constant(0.f, m_size * inputScalars.nBins);
-				///// COMMENT /////
-				// You should modify the forward projection loop here the same way you did in reconstructionAF.h, i.e. for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
-				///// END COMMENT /////
+	
 				for (int ii = 0; ii <= inputScalars.nMultiVolumes_s; ii++) {
 					if (inputScalars.projector_type == 6) {
 						forwardProjectionType6(outputFP, w_vec, vec, inputScalars, length[0], 0, proj, ii, atten);
@@ -2430,7 +2441,7 @@ inline int powerMethod(scalarStruct& inputScalars, Weighting& w_vec, std::vector
 				if (status != 0)
 					return -1;
 				computeIntegralImage(inputScalars, w_vec, length[0], outputFP, meanBP);
-				for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
+				for (int ii = 0; ii <= inputScalars.nMultiVolumes_sb; ii++) {
 					if (inputScalars.projector_type == 6)
 						backprojectionType6(outputFP, w_vec, vec, inputScalars, length[0], 0, proj, 0, 0, 0, 0, ii);
 					else

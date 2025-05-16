@@ -155,7 +155,7 @@ options.axialExtrapolation = true;
 
 % Setting this to true uses multi-resolution reconstruction when using
 % extended FOV. Only applies to extended FOV!
-options.useMultiResolutionVolumes = 1;
+options.useMultiResolutionVolumes =2;
 
 options.eFOVLength = 0.4;
 
@@ -407,7 +407,7 @@ options.PDAdaptiveType = 0;
 % Measurement-based preconditioners
 % precondTypeMeas(1) = Diagonal normalization preconditioner (1 / (A1))
 % precondTypeMeas(2) = Filtering-based preconditioner
-options.precondTypeMeas = [false;true];
+options.precondTypeMeas = [false;false];
 
 % Number of filtering iterations
 % Applies to both precondTypeMeas(2) and precondTypeImage(6)
@@ -534,7 +534,7 @@ options.GGMRF_c = 5;
 % also stores subiteration results.
 options.storeFP = true;
 
-
+options.powerIterations = 10;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -579,4 +579,4 @@ z = int16(pz(:,:,:,end) * 55000) - 1000;
 end
 
 volume3Dviewer(z, [-1000 2000], [0 1 0])
-% volume3Dviewer(pz{2}, [], [0 1 0])
+% volume3Dviewer(pz{1}, [], [0 1 0])

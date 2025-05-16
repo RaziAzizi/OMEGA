@@ -23,7 +23,7 @@ for kk = size(FOV,2) : - 1 : 1
     dz(kk) = diff(zz(1:2));
 
     % Distance of image from the origin
-    if kk == 1 || varargin{1} == 2
+    if kk == 1 || varargin{1} == 2 || varargin{1} == 3
         bx(kk) = xx(1,1);
         by(kk) = yy(1,1);
         bz(kk) = zz(1,1);

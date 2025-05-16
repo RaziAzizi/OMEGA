@@ -35,7 +35,7 @@ if options.useEFOV
     options.NzFull = nz;
 
 
-if options.useMultiResolutionVolumes==2
+if options.useMultiResolutionVolumes==2 || options.useMultiResolutionVolumes==3
         if ~isfield(options, 'multiResolutionScale')
             warning('No scale value input for multi-resolution reconstruction. Using default value of 1/4 of the original voxel size.')
             options.multiResolutionScale = .25;

@@ -455,10 +455,15 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 #endif
 
 	initializeProxPriors(MethodList, inputScalars, vec);
-	if(inputScalars.multiResolution==2)
+	if(inputScalars.multiResolution==2 ||inputScalars.multiResolution==3  )
 	    inputScalars.nMultiVolumes_s=0;
 		else
 		inputScalars.nMultiVolumes_s=inputScalars.nMultiVolumes;
+
+	if(inputScalars.multiResolution==3 )
+	    inputScalars.nMultiVolumes_sb=0;
+		else
+		inputScalars.nMultiVolumes_sb=inputScalars.nMultiVolumes;
 
 	if (inputScalars.verbose >= 3 || DEBUG)
 		mexPrint("Constant kernel variables set");
@@ -527,7 +532,7 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 					E.eval();
 					computeIntegralImage(inputScalars, w_vec, inputScalars.nProjections, E, meanBP);
 					af::sync();
-					for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
+					for (int ii = 0; ii <= inputScalars.nMultiVolumes_sb; ii++) {
 						if (inputScalars.projector_type == 6) {
 							backprojectionType6(E, w_vec, vec, inputScalars, inputScalars.nProjections, 0, proj, 0, 0, 0, iter0, ii, atten);
 						}
@@ -645,7 +650,7 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 				uint8_t apuN = proj.no_norm;
 				proj.no_norm = 1;
 				int64_t uu = 0;
-				for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
+				for (int ii = 0; ii <= inputScalars.nMultiVolumes_sb; ii++) {
 					if (inputScalars.listmode > 0 && inputScalars.computeSensImag) {
 						uint64_t m_size = inputScalars.det_per_ring * inputScalars.det_per_ring * inputScalars.rings * inputScalars.rings;
 						if (inputScalars.nLayers > 1)
@@ -1120,7 +1125,7 @@ int reconstructionAF(const float* z_det, const float* x, const F* Sin, const R* 
 								af::sync();
 							}
 						}
-						for (int ii = 0; ii <= inputScalars.nMultiVolumes; ii++) {
+						for (int ii = 0; ii <= inputScalars.nMultiVolumes_sb; ii++) {
 							if (ii == 0 && inputScalars.adaptiveType == 2 && MethodList.CPType)
 								vec.adapTypeA = outputFP.copy();
 							if (compute_norm_matrix == 1u)
