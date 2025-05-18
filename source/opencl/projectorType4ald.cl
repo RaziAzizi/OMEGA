@@ -834,12 +834,14 @@ void projectorType4Backward(const uint d_size_x, const uint d_sizey,
 		tempD[uu] = 0.f;
 	}
 	uint indD[64];
+	for (int uu = 0; uu < 64; uu++) {
+		indD[uu] = 0;
+	}
 #ifdef SMR2
      float3 dV = CFLOAT3(i) * d_d_c + d_d_c / 2.f + b_c;  
 #else
     float3 dV = CFLOAT3(i) * d_d + d_d / 2.f + b;
 #endif   
-#ifdef SMR2
 uint n_v_d, vIndex, start;
 float3 cIndex;
             if((dV.x >=b.x && dV.y >=b.y && dV.z >=b.z) && (dV.x <=bmax.x && dV.y <=bmax.y && dV.z <=bmax.z )){
@@ -849,7 +851,7 @@ float3 cIndex;
 				vIndex = CUINT_rte(cIndex.x) + CUINT_rte(cIndex.y) * d_N.x + CUINT_rte(cIndex.z) * d_N.x * d_N.y;
                start = vIndex;
 			}
-#endif  
+
     const float2 koko = MFLOAT2(CFLOAT(d_size_x) * d_dPitch.x, CFLOAT(d_sizey) * d_dPitch.y );
     const float2 indeksi = MFLOAT2(CFLOAT(d_size_x) / 2.f, CFLOAT(d_sizey) / 2.f );
     for (int kk = 0; kk < d_nProjections; kk++) {
@@ -913,15 +915,14 @@ float3 cIndex;
                //uint start = vIndex;
 			   int uu = 0;
 		       //computing the dense voxels locations 
-#pragma unroll
-               for (uint ix=0;ix<4;ix++){
+               for (uint ix=0;ix<n_v_d;ix++){
 				   
 				    dV_d.x=d_d.x*ix+dV_.x;
-#pragma unroll
-				    for (uint iy=0;iy<4;iy++){
+				   
+				    for (uint iy=0;iy<n_v_d;iy++){
 					    dV_d.y=d_d.y*iy+dV_.y;
-#pragma unroll
-					    for (uint iz=0;iz<4;iz++){
+					 
+					    for (uint iz=0;iz<n_v_d;iz++){
 						
 						     dV_d.z=d_d.z*iz+dV_.z;
 
@@ -1088,7 +1089,6 @@ float3 cIndex;
          
 #ifdef SMR2 
   if(((dV.x >=b.x && dV.y >=b.y && dV.z >=b.z) && (dV.x <=bmax.x && dV.y <=bmax.y && dV.z <=bmax.z ))){
-#pragma unroll
 	for (int uu = 0; uu < 64; uu++) {
             d_OSEM[indD[uu]] += tempD[uu];
 	}

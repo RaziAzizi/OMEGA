@@ -55,8 +55,8 @@ options.verbose = 1;
 % This should be the full path to the metadata-file of the examination you
 % wish to reconstruct. Alternatively you can leave this empty and you will
 % then be prompted for the metadata-file.
-options.fpath = '/research/users/razazizi/20230413160651Hip_120kV800mAsN500/metadata';
-%options.fpath = '/research/users/razazizi/20230414085533Lumbar_120kV400mAsN500/metadata';
+%options.fpath = '/research/users/razazizi/20230413160651Hip_120kV800mAsN500/metadata';
+options.fpath = '/research/users/razazizi/20230414085533Lumbar_120kV400mAsN500/metadata';
 
 if ~options.only_reconstructions || ~isfield(options,'SinM')
     options = loadPlanmecaData(options);
@@ -133,7 +133,7 @@ options.axialExtrapolation = true;
 
 % Setting this to true uses multi-resolution reconstruction when using
 % extended FOV. Only applies to extended FOV!
-options.useMultiResolutionVolumes = 3;
+options.useMultiResolutionVolumes = 2;
 
 % This is the scale value for the multi-resolution volumes. The original
 % voxel size is divided by this value and then used as the voxel size for
