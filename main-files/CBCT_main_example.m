@@ -5,15 +5,24 @@
 % Reconstruction-wise everything is same as with the generic CT example.
 % Example data available from: https://doi.org/10.5281/zenodo.12722386
 
+
 clear
 clear mex
 
+fovlen = [0.1 0.2  0.3  0.4];
+scale1 =[1/2,1/4,1/8];
+TIME1= [0 0 0 0 0 0 0 0 0 0 0 0 ];
+f2=1;
+for j=2:2
+for i=4:4 
+  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%% SCANNER PROPERTIES %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%% Name of current datafile/examination
@@ -31,7 +40,7 @@ options.only_reconstructions = false;
 % These are e.g. time elapsed on various functions and what steps have been
 % completed. It is recommended to keep this 1.  Maximum value of 3 is
 % supported.
-options.verbose = 1;
+options.verbose = 2;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -155,14 +164,14 @@ options.axialExtrapolation = true;
 
 % Setting this to true uses multi-resolution reconstruction when using
 % extended FOV. Only applies to extended FOV!
-options.useMultiResolutionVolumes = 1;
+options.useMultiResolutionVolumes = 2;
 
-options.eFOVLength = 0.4;
+options.eFOVLength = fovlen(i);
 
 % This is the scale value for the multi-resolution volumes. The original
 % voxel size is divided by this value and then used as the voxel size for
 % the multi-resolution volumes. Default is 1/4 of the original voxel size.
-options.multiResolutionScale = 1/4;
+options.multiResolutionScale = scale1(j);
 
 % Performs the extrapolation and adjusts the image size accordingly
 options = CTEFOVCorrection(options);
@@ -263,12 +272,12 @@ options.projector_type = 4;
 % the interpolation length corresponds to a single voxel (transaxial)
 % length. Larger values lead to faster computation but at the cost of
 % accuracy. Recommended values are between [0.5 1].
-options.dL = 0.5;
+options.dL = 1;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%% RECONSTRUCTION SETTINGS %%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Number of iterations (all reconstruction methods)
-options.Niter = 10;
+options.Niter = 1;
 %%% Save specific intermediate iterations
 % You can specify the intermediate iterations you wish to save here. Note
 % that this uses zero-based indexing, i.e. 0 is the first iteration (not
@@ -532,7 +541,7 @@ options.GGMRF_c = 5;
 
 % Store the intermediate forward projections. Unlike image estimates, this
 % also stores subiteration results.
-options.storeFP = true;
+options.storeFP = false;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -568,15 +577,25 @@ t = tic;
 % fp are the forward projections, if stored
 % the primal-dual gap can be also be stored and is the variable after
 % fp
+
 [pz, recPar, ~, fp, pdgap] = reconstructions_mainCT(options);
 t = toc(t)
+TIME1(f2)=t;
+f2=f2+1;
 
-% Convert to HU-values
+%Convert to HU-values
 if iscell(pz)
     z = int16(pz{1}(:,:,:,end) * 55000) - 1000;
 else
-z = int16(pz(:,:,:,end) * 55000) - 1000;
+    z = int16(pz(:,:,:,end) * 55000) - 1000;
 end
+  %z = int16(pz(:,:,:,end) * 55000) - 1000;
 
-volume3Dviewer(z, [-1000 2000], [0 1 0])
+volume3Dviewer(z, [-1000 2000], [0 0 1]);
+
+%zr = permute(z, [2 3 1]);
+zr = permute(z, [2 3 1]);
+figure;imagesc(zr(:,:,100));axis image off;colormap gray
 % volume3Dviewer(pz{2}, [], [0 1 0])
+ end
+end

@@ -11,6 +11,13 @@
 
 clear
 clear mex
+fovlen = [0.1 0.2  0.3  0.4];
+scale1 =[1/8,1/4,1/2];
+TIME1= [0 0 0 0 0 0 0 0 0 0 0 0 ];
+f2=1;
+for j=2:2
+for i=4:4
+
 
 % addpath(genpath('/pfs/lustrep2/users/vwettenh/OMEGA'))
 
@@ -44,7 +51,7 @@ options.only_reconstructions = false;
 % These are e.g. time elapsed on various functions and what steps have been
 % completed. It is recommended to keep this 1.  Maximum value of 3 is
 % supported.
-options.verbose = 1;
+options.verbose = 2;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -55,8 +62,10 @@ options.verbose = 1;
 % This should be the full path to the metadata-file of the examination you
 % wish to reconstruct. Alternatively you can leave this empty and you will
 % then be prompted for the metadata-file.
-options.fpath = '/research/users/razazizi/20230413160651Hip_120kV800mAsN500/metadata';
-%options.fpath = '/research/users/razazizi/20230414085533Lumbar_120kV400mAsN500/metadata';
+%options.fpath = '/research/users/razazizi/20230413160651Hip_120kV800mAsN500/metadata';
+options.fpath = '/research/users/razazizi/20230414085533Lumbar_120kV400mAsN500/metadata';
+%options.fpath = '/research/users/razazizi/20231213151453VisoG7Head/metadata';
+
 
 if ~options.only_reconstructions || ~isfield(options,'SinM')
     options = loadPlanmecaData(options);
@@ -115,7 +124,7 @@ options.offangle = (3*pi)/2;
 options.useExtrapolation = false;
 
 %%% Use extended FOV
-options.useEFOV = false;
+options.useEFOV = true;
 
 % Use transaxial extended FOV (this is off by default)
 options.transaxialEFOV = true;
@@ -133,14 +142,14 @@ options.axialExtrapolation = true;
 
 % Setting this to true uses multi-resolution reconstruction when using
 % extended FOV. Only applies to extended FOV!
-options.useMultiResolutionVolumes = 0;
+options.useMultiResolutionVolumes = 1;
 
 % This is the scale value for the multi-resolution volumes. The original
 % voxel size is divided by this value and then used as the voxel size for
 % the multi-resolution volumes. Default is 1/4 of the original voxel size.
-options.multiResolutionScale = 1/4;
+options.multiResolutionScale = scale1(j);
 
-% options.eFOVLength = 0.2;
+ options.eFOVLength = fovlen(i);
 
 % options.extrapLength = 0.3;
 
@@ -253,7 +262,7 @@ options.dL = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%% RECONSTRUCTION SETTINGS %%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Number of iterations (all reconstruction methods)
-options.Niter = 10;
+options.Niter = 1;
 %%% Save specific intermediate iterations
 % You can specify the intermediate iterations you wish to save here. Note
 % that this uses zero-based indexing, i.e. 0 is the first iteration (not
@@ -636,7 +645,8 @@ options.FISTAType = 2;
 options.stochasticSubsetSelection = false;
 
 
-% Available windows are: hamming, hann, blackman, nuttal, parzen, cosine, gaussian, and shepp-logan
+% Available windows are
+% : hamming, hann, blackman, nuttal, parzen, cosine, gaussian, and shepp-logan
 options.filterWindow = 'hamming';
 
 %%
@@ -651,13 +661,38 @@ t = tic;
 % the primal-dual gap can be also be stored and is the variable after
 % fp
 [pz, recPar, ~, fp, res] = reconstructions_mainCT(options);
-t = toc(t)
 
+t = toc(t)
+TIME1(f2)=t;
+f2=f2+1;
+disp(i)
+disp(j)
 % Convert to HU-values
-z = int16(pz{1}(:,:,:,end) * 55000) - 1000;
+
+if iscell(pz)
+    z = int16(pz{1}(:,:,:,end) * 55000) - 1000;
+else
+    z = int16(pz(:,:,:,end) * 55000) - 1000;
+end
+
+%
 
 volume3Dviewer(z, [-1000 2000], [0 0 1])
+figure;imagesc(z(:,:,196)),axis image off;colormap gray
+colormap(gray); 
+caxis auto; % use default color scaling first
 
+% Adjust colormap to lighter gray:
+cmap = gray(256); % Get the default grayscale colormap
+lighter_cmap = cmap + 0.2; % shift toward white (lighter)
+lighter_cmap(lighter_cmap > 1) = 1; % ensure values remain within [0,1]
+
+colormap(lighter_cmap);
+
+clear options;
+clear pz;
+end
+end
 % save('/pfs/lustref1/flash/project_462000633/testi.mat', '-v7.3', 'z', 't','recPar')
 % 
 % exit

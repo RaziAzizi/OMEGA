@@ -722,16 +722,16 @@ else
 end
 
 
-if options.param.useEFOV && ~options.param.useMultiResolutionVolumes
-    if options.param.transaxialEFOV
-        nTrans = (options.param.Nx - options.param.NxOrig)/2;
-        pz = pz(1 + nTrans:end-nTrans,1 + nTrans:end-nTrans,:,:,:);
-    end
-    if options.param.axialEFOV
-        nAxial = (options.param.Nz - options.param.NzOrig)/2;
-        pz = pz(:,:,1 + nAxial:end-nAxial,:,:,:);
-    end
-end
+% if options.param.useEFOV && ~options.param.useMultiResolutionVolumes
+%     if options.param.transaxialEFOV
+%         nTrans = (options.param.Nx - options.param.NxOrig)/2;
+%         pz = pz(1 + nTrans:end-nTrans,1 + nTrans:end-nTrans,:,:,:);
+%     end
+%     if options.param.axialEFOV
+%         nAxial = (options.param.Nz - options.param.NzOrig)/2;
+%         pz = pz(:,:,1 + nAxial:end-nAxial,:,:,:);
+%     end
+% end
 if options.param.storeFP && (options.param.subsets == 1 || options.param.subset_type >= 8) && options.param.implementation == 2 && ~options.param.FDK
     uu = 1;
     for kk = 1 : options.param.Niter

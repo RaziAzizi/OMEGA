@@ -1,4 +1,4 @@
-﻿/*************************************************************************************************************************************************
+/*************************************************************************************************************************************************
 * Matrix free computations for OMEGA (Implementation 2).
 * This is the main file for the matrix-free computations in OMEGA. In this file the MATLAB variables are loaded and either the matrix-free 
 * reconstructions are computed or the custom prior reconstruction (custom priors are not supported anymore).
@@ -355,7 +355,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[]) {
 	size_t mDim = mxGetNumberOfElements(Sin) / static_cast<size_t>(inputScalars.Nt);
 
 	mxArray* cell_array_ptr, * FPptr, *resPtr;
-	if (CELL)
+	if (CELL && inputScalars.nMultiVolumes > 0 )
 		cell_array_ptr = mxCreateCellMatrix(static_cast<mwSize>(inputScalars.nMultiVolumes) + 1, 1);
 	else
 		cell_array_ptr = mxCreateNumericArray(5, dim, mxSINGLE_CLASS, mxREAL);

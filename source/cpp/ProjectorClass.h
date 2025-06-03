@@ -13,6 +13,7 @@
 *******************************************************************************************************************************************/
 #pragma once
 #include "structs.h"
+#include <chrono>
 /// <summary>
 /// Class object for forward and backward projections. OpenCL version
 /// </summary>
@@ -2572,7 +2573,11 @@ public:
 			mexPrintBase("nMultiVolumes = %u\n", inputScalars.nMultiVolumes);
 			mexEval();
 		}
-
+		std::chrono::steady_clock::time_point tStart;
+		std::chrono::steady_clock::time_point tEnd;
+		if (DEBUG || inputScalars.verbose >= 2) {
+			tStart = std::chrono::steady_clock::now();
+		}
 		status = CLCommandQueue[0].finish();
 		if (status != CL_SUCCESS) {
 			getErrorString(status);
@@ -2918,8 +2923,11 @@ public:
 			getErrorString(status);
 			return -1;
 		}
-		if (inputScalars.verbose >= 3)
-			mexPrint("Forward projection completed");
+		if (DEBUG || inputScalars.verbose >= 2) {
+			tEnd = std::chrono::steady_clock::now();
+			const std::chrono::duration<double> tDiff = tEnd - tStart;
+			mexPrintBase("Forward projection completed in %f seconds\n", tDiff);
+		}
 		return 0;
 	}
 
@@ -2945,6 +2953,16 @@ public:
 			kernelApu = kernelBP;
 			kernelBP = kernelSensList;
 			kernelIndBPSubIter = kernelIndSens;
+		}
+		std::chrono::steady_clock::time_point tStart;
+		std::chrono::steady_clock::time_point tEnd;
+		if (DEBUG || inputScalars.verbose >= 2) {
+			tStart = std::chrono::steady_clock::now();
+		}
+		status = CLCommandQueue[0].finish();
+		if (status != CL_SUCCESS) {
+			getErrorString(status);
+			return -1;
 		}
 
 		if (inputScalars.BPType == 1 || inputScalars.BPType == 2 || inputScalars.BPType == 3) {
@@ -3044,8 +3062,7 @@ public:
 						if (status != CL_SUCCESS) {
 							getErrorString(status);
 							return -1;
-						}
-					}
+                                                  }					}
 				}
 			}
 			if ((inputScalars.CT || inputScalars.PET || inputScalars.SPECT) && inputScalars.listmode == 0)
@@ -3542,8 +3559,11 @@ public:
 		if (inputScalars.listmode > 0 && compSens) {
 			kernelBP = kernelApu;
 		}
-		if (DEBUG || inputScalars.verbose >= 3)
-			mexPrint("Backprojection computed");
+		if (DEBUG || inputScalars.verbose >= 2) {
+			tEnd = std::chrono::steady_clock::now();
+			const std::chrono::duration<double> tDiff = tEnd - tStart;
+			mexPrintBase("Backprojection completed in %f seconds\n", tDiff);
+		}
 		return 0;
 	}
 
